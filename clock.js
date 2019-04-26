@@ -4,21 +4,22 @@ let latitude = 51.470917;
 let longitude = -2.614395;
 let notice = document.getElementById("notice");
 
-function getLocation() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(showPosition);
-  } else {
+function geoFailed() {
     notice.innerHTML = "Geolocation is not supported by this browser.";
     init();
-  }
+}
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition, geoFailed);
+  } else geoFailed();
 }
 
 function showPosition(position) {
   notice.innerHTML = "Latitude: " + position.coords.latitude + 
   "<br>Longitude: " + position.coords.longitude;
   init();
-
 }
+
 
 let coord = A.EclCoord.fromWgs84(latitude, longitude); // Bristol
 
@@ -185,11 +186,12 @@ function draw () {
 }
 
 function init () {
+    console.log('init')
     canvas = document.getElementById('clock');
     canvas.width = canvas.height = 300;
     ctx = canvas.getContext('2d');
 
     setInterval(draw, 500);
 }
-
+init();
 getLocation();
