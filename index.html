@@ -4,6 +4,9 @@
         <meta charset="utf-8">
         <title>Analog Clock</title>
         <style>
+            body {
+                font-size: 1.2em;
+            }
             #digitalTime {
                 font-size: 3em;
                 padding: 1em;
@@ -12,9 +15,18 @@
         </style>
     </head>
     <body>
-        <div id="notice"></div>
         <canvas id="clock"></canvas>
         <div id="digitalTime"></div>
+        <div id="notice"></div>
+        <h3>This is a sun clock.</h3>
+        <ul>
+            <li>The sun always rises at 00:00 and always sets at 00:00.</li>
+            <li>There are 12 hours in every day, and 12 hours in every night.</li>
+            <li>The speed of time changes throughout the year, as the days get shorter and longer.</li>
+            <li>In the summer, the night time moves swiftly, as the hours till sunrise are short.</li>
+            <li>In the winter, the night time moves slowly, as the hours till sunrise are long.</li>
+            <li>True midnight (sun at its lowest) and true midday (sun at its highest) are always at 6:00.</li>
+        </ul>
         <script type="text/javascript">
 
         </script>
