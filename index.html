@@ -5,35 +5,436 @@
         <title>Analog Clock</title>
         <style>
             body {
-                font-size: 1.2em;
+              margin: 0;
+              background: #000;
+              color: white;
+              font-family: sans-serif;
             }
+
+            svg {
+              display: block;
+              margin: calc(50vh - 50vmin) auto;
+              min-width: 15em;
+              min-height: 15em;
+              width: 100vmin;
+              height: 100vmin;
+              max-width: 100em;
+              max-height: 100em;
+              font-size: 1em;
+            }
+
             #digitalTime {
+                display: block;
+                min-width: 15em;
+                width: 100vmin;
+                max-width: 100em;
                 font-size: 3em;
-                padding: 1em;
-                font-family: courier;
+                text-align: center;
             }
+
+            * {
+              vector-effect: non-scaling-stroke;
+            }
+
+            [id*='mark'] {
+              stroke: #eee;
+            }
+
+            [id='mark--major'] {
+              stroke-width: 7;
+            }
+
+            [id='mark--minor'] {
+              stroke-width: 2;
+            }
+
+            [id='ticks'] text {
+              dominant-baseline: middle;
+              text-anchor: middle;
+              font: 20px verdana, sans-serif;
+              fill: #aaa;
+            }
+            [id='ticks'] .quad {
+              font: 700 28px verdana, sans-serif;
+              fill: #eee;
+            }
+
+            .hand--h, .hand--m {
+              stroke: #eee;
+              stroke-linecap: round;
+            }
+            .hand--h line:nth-child(2), .hand--m line:nth-child(2) {
+              stroke: #4ca454;
+              stroke-width: 3;
+            }
+            .hand--h {
+              stroke-width: 7;
+            }
+            .hand--m {
+              stroke-width: 5;
+            }
+            .hand--s {
+              stroke: #be4c39;
+            }
+            .hand--s line {
+              stroke-width: 2;
+            }
+            .hand--s circle {
+              fill: #e18728;
+            }
+            .hand--s circle:nth-of-type(2) {
+              fill: #e0a197;
+            }
+
+            [id='arc'] {
+              fill: transparent;
+              stroke: #4ca454;
+              stroke-width: 4;
+              stroke-linecap: round;
+            }
+
+            [id='vertex'] {
+              fill: #4ca454;
+            }
+
+            .counterclockwise [id='vertex'] {
+              fill: #be4c39;
+            }
+            .counterclockwise [id='arc'] {
+              stroke: #be4c39;
+            }
+
         </style>
     </head>
     <body>
-        <canvas id="clock"></canvas>
         <div id="digitalTime"></div>
+        <svg viewbox="-450 -450 900 900">
+          <defs>
+            <line id="mark--major" y1="28.8"></line>
+            <line id="mark--minor" y1="14.4"></line>
+            <circle id="cc" r="360"></circle>
+          </defs>
+          <g id="ticks"></g>
+          <g id="hands">
+            <g class="hand--h">
+              <line y2="-234"></line>
+              <line y1="-136.8" y2="-205.2"></line>
+            </g>
+            <g class="hand--m" transform="rotate(25)">
+              <line y2="-298.8"></line>
+              <line y1="-201.60000000000002" y2="-270"></line>
+            </g>
+            <g class="hand--s" transform="rotate(60)">
+              <line y1="36" y2="-342"></line>
+              <circle r="14.4"></circle>
+              <circle r="7.2"></circle>
+            </g>
+          </g>
+          <g id="progress">
+            <path id="arc"></path>
+            <polygon id="vertex" points="0,-405 -39,-425 -20,-405  -39,-385"></polygon>
+          </g>
+        </svg>
+
+        <h3>This is a true sun clock.</h3>
         <div id="notice"></div>
-        <h3>This is a sun clock.</h3>
-        <ul>
-            <li>The sun always rises at 00:00 and always sets at 00:00.</li>
+        <ol>
+            <li>The day is balanced with the night.</li>
             <li>There are 12 hours in every day, and 12 hours in every night.</li>
+            <li>The sun always rises at 00:00 and always sets at 00:00.</li>
             <li>The speed of time changes throughout the year, as the days get shorter and longer.</li>
             <li>In the summer, the night time moves swiftly, as the hours till sunrise are short.</li>
             <li>In the winter, the night time moves slowly, as the hours till sunrise are long.</li>
             <li>True midnight (sun at its lowest) and true midday (sun at its highest) are always at 6:00.</li>
-        </ul>
+        </ol>
         <script type="text/javascript">
 
         </script>
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
         <script type="text/javascript" src="meuusjs.1.0.3.min.js"></script>
-		<script src="suncalc.js"></script>
-        <script src="Vector.js"></script>
-        <script src="clock.js"></script>
+        <script src="suncalc.js"></script>
+        <script>
+
+            let latitude = 51.470917;
+            let longitude = -2.614395;
+            let notice = document.getElementById("notice");
+
+            function geoFailed() {
+                notice.innerHTML = "Geolocation is not supported by this browser.";
+                init();
+            }
+            function getLocation() {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, geoFailed);
+              } else geoFailed();
+            }
+
+            function showPosition(position) {
+              notice.innerHTML = "Latitude: " + position.coords.latitude + 
+              "<br>Longitude: " + position.coords.longitude;
+              init();
+            }
+
+            let coord = A.EclCoord.fromWgs84(latitude, longitude); // Bristol
+
+            function getTime() {
+                let now = new Date();
+                let delta, factor, start;
+
+                let jdo = new A.JulianDay(now);
+                let r = A.Solar.times(jdo, coord);
+                let rise = A.Coord.secondsToHMSStr(r.rise);
+                let set = A.Coord.secondsToHMSStr(r.set);
+                rise = moment.utc(rise, "HH:mm:ss").local().valueOf()
+                set = moment.utc(set, "HH:mm:ss").local().valueOf()
+
+                // if today's sunrise is in the future or today's sunset is in the past
+                if (set < now) {
+                    // get tomorrows sunrise for factor
+                    let tomorrow = new Date();
+                    tomorrow.setDate(now.getDate()+1);
+                    jdo = new A.JulianDay(tomorrow);
+                    r = A.Solar.times(jdo, coord);
+                    rise = A.Coord.secondsToHMSStr(r.rise);
+                    rise = moment.utc(rise, "HH:mm:ss").add(1, 'days').local().valueOf();
+                    delta = rise - set;
+                    start = set;
+                }
+                else if (rise > now) {
+                    // get yesterday's sunset for factor
+                    jdo = new A.JulianDay(new Date().setDate(now.getDate()-1));
+                    r = A.Solar.times(jdo, coord);
+                    set = A.Coord.secondsToHMSStr(r.set);
+                    set = moment.utc(set, "HH:mm:ss").add(1, 'days').local().valueOf();
+                    delta = rise - set;
+                    start = set;
+                }
+                else {
+                    delta = set - rise;
+                    start = rise;
+                }
+                factor = Math.abs(delta) / 4.32e+7;
+
+                let millisec = (now - start) / factor; // milliseconds since beginning of period
+                let seconds = (millisec / 1000).toFixed(0);
+                let minutes = Math.floor(seconds / 60);
+                let hours = 0;
+                if (minutes > 59) {
+                    hours = Math.floor(minutes / 60);
+                    minutes = minutes - (hours * 60);
+                }
+                seconds = Math.floor(seconds % 60);
+                return {hours: hours, minutes: minutes, seconds: seconds}
+            }
+            function getDigital() {
+                let time = getTime();
+                let hours = time.hours,
+                    minutes = time.minutes,
+                    seconds = time.seconds;
+
+                hours = (hours >= 10) ? hours : "0" + hours;
+                minutes = (minutes >= 10) ? minutes : "0" + minutes;
+                seconds = (seconds >= 10) ? seconds : "0" + seconds;
+                return hours + ":" + minutes + ":" + seconds;
+            }
+
+            /* because IE */
+            Math.sign = Math.sign || function(x) {
+              x = +x; // convert to a number
+              if (x === 0 || isNaN(x)) {
+                return x;
+              }
+              return x > 0 ? 1 : -1;
+            }
+
+            /* because me lazy */
+            Object.getOwnPropertyNames(Math).map(function(p) {
+              window[p] = Math[p];
+            });
+
+            Node.prototype.setAttrs = function(attr_obj) {
+              for(var prop in attr_obj) {
+                this.setAttribute(prop, attr_obj[prop]);
+              }
+            };
+
+            var NS_URI = 'http://www.w3.org/2000/svg', 
+                XLink_NS = 'http://www.w3.org/1999/xlink', 
+                    
+                    ns = 60, 
+                    mi = 5, 
+                    qi = .25*ns, 
+                    r = ~~document.getElementById('cc').getAttribute('r'),
+                    svg = document.querySelector('svg'), 
+                    wrap = document.getElementById('ticks'), 
+                    h_el = document.querySelector('.hand--h'), 
+                    m_el = document.querySelector('.hand--m'), 
+                    s_el = document.querySelector('.hand--s'), 
+                    h_max = 12, h_rad = 2*PI/h_max, h_deg = 360/h_max, 
+                    m_max = 60, m_rad = 2*PI/m_max, m_deg = 360/m_max, 
+                    s_max = 60, s_rad = 2*PI/s_max, s_deg = 360/s_max, 
+                    prev_s, 
+                    p_el = document.getElementById('progress'), 
+                    a_el = document.getElementById('arc'), 
+                    v_el = document.getElementById('vertex'),
+                    arc_r = -1*v_el.getAttribute('points').split(' ')[0].split(',')[1], 
+                    clockwise = true;
+
+            var init = function () {
+                var frag = document.createDocumentFragment(), 
+                        curr_tick_group, curr_tick, text0, text1, 
+                        is_major, is_quad, ref, 
+                        curr_angle, base_angle = 360/ns, bb;
+                
+                for(var i = 0; i < ns; i++) {
+                    is_major = (i%mi === 0);
+                    is_quad = (i%qi === 0);
+                    
+                    ref = '#mark--' + (is_major ? 'major' : 'minor');
+                    curr_angle = i*base_angle
+                    
+                    curr_tick_group = document.createElementNS(NS_URI, 'g');
+                    curr_tick = document.createElementNS(NS_URI, 'use');
+                    curr_tick.setAttributeNS(XLink_NS, 'xlink:href', ref);
+                    
+                    curr_tick.setAttribute(
+                        'transform', 
+                        'rotate(' + curr_angle + ')' + 
+                        'translate(0 -' + r + ')'
+                    );
+                    
+                    if(is_major) {
+                        curr_tick.setAttribute('class', 'major');
+                        
+                        text1 = document.createElementNS(NS_URI, 'text');
+                        text1.textContent = i;
+                        
+                        text1.setAttribute(
+                            'transform', 
+                            'rotate(' + curr_angle + ')' + 
+                            'translate(0 -' + 1.05*r + ')' + 
+                            'rotate(' + -curr_angle + ')'
+                        );
+                        curr_tick_group.appendChild(text1);
+                        
+                        if(is_quad) {
+                            curr_tick.setAttribute('class', 'major quad');
+                            
+                            text2 = document.createElementNS(NS_URI, 'text');
+                            text2.textContent = (i/mi) || 12;
+                            
+                            text2.setAttrs({
+                                'class': 'quad', 
+                                'transform': 
+                                'rotate(' + curr_angle + ')' + 
+                                'translate(0 -' + .8*r + ')' + 
+                                'rotate(' + -curr_angle + ')'
+                            });
+                            curr_tick_group.appendChild(text2);
+                        }
+                    }
+                    
+                    curr_tick_group.appendChild(curr_tick);
+                    frag.appendChild(curr_tick_group);
+                }
+                
+                wrap.appendChild(frag);
+                
+                run();
+            };
+
+            var run = function() {
+                var t = getTime(), 
+                        h = t.hours, curr_s_deg, curr_s_rad, 
+                        m = t.minutes, curr_m_deg,
+                        s = t.seconds, curr_h_deg, 
+                        x, y, d_txt, j;
+                
+                var digitalTime = getDigital();
+                document.title = digitalTime;
+                document.getElementById('digitalTime').innerText = digitalTime;
+
+                j = (s >= .5*s_max)*1;
+                d_txt = 'M0,' + -arc_r + 
+                        'A' + arc_r + ' ' + arc_r + ' 0 ' + j + ' 1 ';
+                
+                curr_s_rad = (s%s_max - (curr_s_deg > 10)*.5)*s_rad - .5*PI;
+                curr_s_deg = (s%s_max)*s_deg;
+                x = arc_r*cos(curr_s_rad);
+                y = arc_r*sin(curr_s_rad);
+
+                d_txt += x + ' ' + y;
+
+                a_el.setAttribute('d', d_txt);
+                
+                if(curr_s_deg < 10) {
+                    if(v_el.style.display !== 'none'){
+                        v_el.style.display = 'none';
+                    }
+                }
+                else {
+                    if(v_el.style.display !== ''){
+                        v_el.style.display = '';
+                    }
+
+                    v_el.setAttribute(
+                        'transform', 
+                        'rotate(' + curr_s_deg + ')'
+                    );
+                }
+                    
+                if(s != prev_s) {   
+                    curr_s_deg = (s%s_max)*s_deg;
+                    s_el.setAttribute(
+                        'transform', 
+                        'rotate(' + curr_s_deg + ')'
+                    );
+
+                    if(curr_s_deg < 10) {
+                        if(v_el.style.display !== 'none'){
+                            v_el.style.display = 'none';
+                        }
+                    }
+                    else {
+                        if(v_el.style.display !== ''){
+                            v_el.style.display = '';
+                        }
+
+                        v_el.setAttribute(
+                            'transform', 
+                            'rotate(' + curr_s_deg + ')'
+                        );
+                    }
+
+                    curr_m_deg = ((m%m_max) + s/s_max)*m_deg;
+                    m_el.setAttribute(
+                        'transform', 
+                        'rotate(' + curr_m_deg + ')'
+                    );
+
+                    curr_h_deg = ((h%h_max) + m/m_max)*h_deg;
+                    h_el.setAttribute(
+                        'transform', 
+                        'rotate(' + curr_h_deg + ')'
+                    );
+                }
+                
+                prev_s = s;
+                
+                requestAnimationFrame(run);
+            };
+
+            var revert = function () {
+                clockwise = !clockwise;
+                p_el.setAttribute('class', (!clockwise)?'counterclockwise':'');
+                p_el.setAttribute('transform', 'scale(' + (clockwise?1:-1) + ' 1)');
+            };
+
+            svg.addEventListener('click', revert, false);
+            
+            init();
+            getLocation();
+        </script>
+        Credit https://codepen.io/thebabydino/pen/aOrGXx
     </body>
 </html>
